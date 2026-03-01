@@ -1,16 +1,8 @@
-# ==========================================================
-# Custom Logger Configuration
-# ==========================================================
+'''cloud safe logging'''
 
 import logging
-from datetime import datetime
-from paths import LOGS_DIR
 
-def setup_logger(name: str = "aita_logger") -> logging.Logger:
-
-    timestamp = datetime.now().strftime("%d-%m-%y_%H-%M-%S")
-    log_file = LOGS_DIR / f"{timestamp}.txt"
-
+def setup_logger(name: str = "aita") -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
     logger.propagate = False
@@ -19,19 +11,12 @@ def setup_logger(name: str = "aita_logger") -> logging.Logger:
         return logger
 
     formatter = logging.Formatter(
-        "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        datefmt="%d-%m-%Y %H:%M:%S"
+        "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
     )
-
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(formatter)
 
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
 
-    logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-
-    logger.info(f"Logger initialized at {log_file}")
 
     return logger
