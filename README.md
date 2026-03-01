@@ -113,7 +113,9 @@ Because the application is heavily optimized for asynchronous I/O, the FastAPI s
 
 ### Full Request Lifecycle Diagram:
 
-```code
+**Full Request Lifecycle Diagram:**
+
+```mermaid
 sequenceDiagram
     actor User
     participant UI as Frontend (React)
