@@ -66,10 +66,10 @@ async def startup():
 @limiter.limit("30/minute")
 async def chat(request: Request, payload: ChatRequest):
 
-    # 1️⃣ Load Conversation History (PostgreSQL)
+    # 1. Load Conversation History (PostgreSQL)
     history = await get_conversation(payload.thread_id)
 
-    # 2️⃣ Fetch & Cache Lab Context (Smart Cache)
+    # 2. Fetch & Cache Lab Context (Smart Cache)
     lab_context = ""
 
     if payload.lab_id:
@@ -82,7 +82,7 @@ async def chat(request: Request, payload: ChatRequest):
             )
             lab_context = questions[selected_q]["content"]
 
-    # 3️⃣ Build System Prompt
+    # 3. Build System Prompt
     system_prompt = f"""
 {BASE_PERSONA}
 
@@ -92,14 +92,14 @@ OFFICIAL CURRENT LAB CONTEXT:
 
     messages = [SystemMessage(content=system_prompt)]
 
-    # 4️⃣ Append Previous Conversation
+    # 4. Append Previous Conversation
     for msg in history:
         if msg["role"] == "user":
             messages.append(HumanMessage(content=msg["content"]))
         else:
             messages.append(SystemMessage(content=msg["content"]))
 
-    # 5️⃣ Handle File Attachment
+    # 5. Handle File Attachment
     user_input = payload.message
 
     if hasattr(payload, "file_content") and payload.file_content:
