@@ -107,12 +107,12 @@ OFFICIAL CURRENT LAB CONTEXT:
 
     messages.append(HumanMessage(content=user_input))
 
-    # 6️⃣ Call LLM
+    # 6. Call LLM
     try:
         response = await main_llm.ainvoke(messages)
         reply = response.content
 
-        # 7️⃣ Persist Conversation
+        # 7. Persist Conversation
         history.append({"role": "user", "content": payload.message})
         history.append({"role": "assistant", "content": reply})
 
