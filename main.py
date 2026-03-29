@@ -49,16 +49,6 @@ app.add_middleware(
 )
 
 # ----------------------------------------------------------
-# Startup: Ensure DB Tables Exist
-# ----------------------------------------------------------
-
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database initialized successfully.")
-
-# ----------------------------------------------------------
 # Chat Endpoint
 # ----------------------------------------------------------
 
@@ -66,23 +56,24 @@ async def startup():
 @limiter.limit("30/minute")
 async def chat(request: Request, payload: ChatRequest):
 
-    # 1. Load Conversation History (PostgreSQL)
+    # 1. Load Conversation History
     history = await get_conversation(payload.thread_id)
+    lab_context = "General AI and Python programming."
 
-    # 2. Fetch & Cache Lab Context (Smart Cache)
-    lab_context = ""
-
-    if payload.lab_id:
+    # 2. Prefer Frontend-Provided Context (Fastest, zero extra tokens!)
+    if payload.question_detail:
+        lab_context = f"Question ID: {payload.question_id}\nDetails:\n{payload.question_detail}"
+        logger.info(f"Using direct frontend context for question: {payload.question_id}")
+        
+    # 3. Fallback: Backend Scraping + LLM Routing (If user just types a general message)
+    elif payload.lab_id:
         questions = await get_clean_lab_questions(payload.lab_id)
-
         if questions:
-            selected_q = await detect_relevant_question(
-                payload.message,
-                questions
-            )
+            selected_q = await detect_relevant_question(payload.message, questions)
             lab_context = questions[selected_q]["content"]
+            logger.info(f"Fallback LLM Router selected question: {selected_q}")
 
-    # 3. Build System Prompt
+    # 4. Build System Prompt
     system_prompt = f"""
 {BASE_PERSONA}
 
@@ -92,14 +83,14 @@ OFFICIAL CURRENT LAB CONTEXT:
 
     messages = [SystemMessage(content=system_prompt)]
 
-    # 4. Append Previous Conversation
+    # 5. Append Previous Conversation
     for msg in history:
         if msg["role"] == "user":
             messages.append(HumanMessage(content=msg["content"]))
         else:
             messages.append(SystemMessage(content=msg["content"]))
 
-    # 5. Handle File Attachment
+    # 6. Handle Incoming Message
     user_input = payload.message
 
     if hasattr(payload, "file_content") and payload.file_content:
@@ -107,12 +98,12 @@ OFFICIAL CURRENT LAB CONTEXT:
 
     messages.append(HumanMessage(content=user_input))
 
-    # 6. Call LLM
+    # 7. Call LLM
     try:
         response = await main_llm.ainvoke(messages)
         reply = response.content
 
-        # 7. Persist Conversation
+        # 8. Persist Conversation
         history.append({"role": "user", "content": payload.message})
         history.append({"role": "assistant", "content": reply})
 
